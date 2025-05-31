@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>TikTok Video Player</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    html, body {
+      height: 100%;
+      width: 100%;
+      font-family: 'Segoe UI', Roboto, sans-serif;
+      background-color: black;
+      overflow: hidden;
+    }
+
+    main {
+      height: 100vh;
+      width: 100vw;
+      overflow-y: scroll;
+      scroll-snap-type: y mandatory;
+      -webkit-overflow-scrolling: touch;
+      scroll-behavior: smooth;
+      overscroll-behavior: none;
+      touch-action: pan-y;
+    }
+
+    .video-wrapper {
+      height: 100vh;
+      width: 100%;
+      scroll-snap-align: start;
+      background-color: black;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      touch-action: pan-y;
+    }
+
+    iframe {
+      width: 100%;
+      height: 100%;
+      border: none;
+      opacity: 0;
+      transition: opacity 1s ease;
+    }
+
+    iframe.loaded {
+      opacity: 1;
+    }
+
+    .video-top-label {
+      position: absolute;
+      top: 20px;
+      left: 10px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 2px 8px;
+      border-radius: 15px;
+      font-weight: 600;
+      font-size: 14px;
+      z-index: 5;
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .action-buttons {
+      position: absolute;
+      right: 20px;
+      bottom: 80px;
+      display: flex;
+      flex-direction: column;
+      gap: 15px;
+      z-index: 10;
+    }
+
+    .action-btn {
+      width: 50px;
+      height: 50px;
+      background: linear-gradient(135deg, #ff9a9e 0%, #fecfef 100%);
+      color: white;
+      font-size: 20px;
+      border-radius: 50%;
+      box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      backdrop-filter: blur(10px);
+      border: 2px solid rgba(255, 255, 255, 0.2);
+      cursor: pointer;
+      position: relative;
+      overflow: hidden;
+      transition: all 0.3s;
+    }
+
+    .action-btn::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -100%;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+      transition: left 0.5s;
+    }
+
+    .action-btn:hover::before {
+      left: 100%;
+    }
+
+    .action-btn:hover {
+      transform: scale(1.15) rotate(10deg);
+      box-shadow: 0 12px 30px rgba(0, 0, 0, 0.4);
+    }
+
+    .action-btn:active {
+      transform: scale(0.9);
+    }
+
+    .nav-btn-up {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+    }
+
+    .nav-btn-down {
+      background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%) !important;
+    }
+
+    @media (max-width: 768px) {
+      .action-buttons {
+        right: 15px;
+        bottom: 100px;
+        gap: 12px;
+      }
+
+      .action-btn {
+        width: 45px;
+        height: 45px;
+        font-size: 18px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main id="videoContainer"></main>
+
+  <script>
+    const videos = [
+      {
+        type: "vimeo",
+        url: "https://player.vimeo.com/video/1087925155?h=0bd6899c9d&autoplay=1&muted=1",
+        originalUrl: "https://player.vimeo.com/video/1087925155?h=0bd6899c9d&muted=1"
+      },
+      {
+        type: "vimeo",
+        url: "https://player.vimeo.com/video/1087925125?h=6612f2ca4c&autoplay=1&muted=1",
+        originalUrl: "https://player.vimeo.com/video/1087925125?h=6612f2ca4c&muted=1"
+      }
+    ];
+
+    const videoContainer = document.getElementById('videoContainer');
+    let currentVideoIndex = 0;
+    let isScrolling = false;
+
+    function createVideoWrapper(video, index) {
+      const wrapper = document.createElement('div');
+      wrapper.className = 'video-wrapper';
+      wrapper.dataset.index = index;
+
+      const iframe = document.createElement('iframe');
+      iframe.allow = "autoplay; fullscreen; picture-in-picture";
+      // Start with autoplay URL for the first video, original URL for others
+      iframe.src = index === 0 ? video.url : video.originalUrl;
+      iframe.id = `video-${index}`;
+      iframe.onload = () => iframe.classList.add('loaded');
+
+      const topLabel = document.createElement('div');
+      topLabel.className = 'video-top-label';
+      topLabel.textContent = '@Morthad';
+
+      const actionBox = document.createElement('div');
+      actionBox.className = 'action-buttons';
+
+      const upBtn = document.createElement('div');
+      upBtn.className = 'action-btn nav-btn-up';
+      upBtn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path d="M8 12L12 8L16 12"/></svg>`;
+      upBtn.onclick = () => scrollToPrevious();
+
+      const downBtn = document.createElement('div');
+      downBtn.className = 'action-btn nav-btn-down';
+      downBtn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path d="M8 12L12 16L16 12"/></svg>`;
+      downBtn.onclick = () => scrollToNext();
+
+      const likeBtn = document.createElement('div');
+      likeBtn.className = 'action-btn';
+      likeBtn.textContent = '❤️';
+      likeBtn.onclick = () => showNotification("Video liked! ❤️");
+
+      const commentBtn = document.createElement('div');
+      commentBtn.className = 'action-btn';
+      commentBtn.textContent = '💬';
+      commentBtn.onclick = () => showNotification("Comment feature coming soon! 💬");
+
+      const shareBtn = document.createElement('div');
+      shareBtn.className = 'action-btn';
+      shareBtn.textContent = '📤';
+      shareBtn.onclick = () => shareVideo(video.url);
+
+      actionBox.append(upBtn, downBtn, likeBtn, commentBtn, shareBtn);
+      wrapper.append(iframe, topLabel, actionBox);
+      return wrapper;
+    }
+
+    function scrollToVideo(index) {
+      if (index < 0 || index >= videos.length || isScrolling) return;
+      isScrolling = true;
+      const target = document.querySelector(`.video-wrapper[data-index="${index}"]`);
+      if (target) {
+        target.scrollIntoView({ behavior: 'smooth' });
+        setTimeout(() => {
+          currentVideoIndex = index;
+          playCurrentVideo();
+          isScrolling = false;
+        }, 600);
+      } else {
+        isScrolling = false;
+      }
+    }
+
+    function scrollToPrevious() {
+      scrollToVideo(currentVideoIndex - 1);
+    }
+
+    function scrollToNext() {
+      scrollToVideo(currentVideoIndex + 1);
+    }
+
+    function playCurrentVideo() {
+      // Pause all videos except current
+      document.querySelectorAll('iframe').forEach((iframe, index) => {
+        if (index !== currentVideoIndex) {
+          const video = videos[index];
+          iframe.src = video.originalUrl;
+        }
+      });
+
+      // Play current video with autoplay
+      const currentIframe = document.getElementById(`video-${currentVideoIndex}`);
+      if (currentIframe) {
+        const video = videos[currentVideoIndex];
+        // Force reload with autoplay
+        setTimeout(() => {
+          currentIframe.src = video.url;
+        }, 100);
+      }
+    }
+
+    function initializeVideos() {
+      videoContainer.innerHTML = '';
+      videos.forEach((video, index) => {
+        const wrapper = createVideoWrapper(video, index);
+        videoContainer.appendChild(wrapper);
+      });
+
+      const observer = new IntersectionObserver(entries => {
+        entries.forEach(entry => {
+          if (entry.isIntersecting && entry.intersectionRatio > 0.7) {
+            const index = parseInt(entry.target.dataset.index);
+            if (index !== currentVideoIndex && !isScrolling) {
+              currentVideoIndex = index;
+              setTimeout(() => playCurrentVideo(), 100);
+            }
+          }
+        });
+      }, { threshold: 0.7 });
+
+      document.querySelectorAll('.video-wrapper').forEach(wrapper => observer.observe(wrapper));
+    }
+
+    function shareVideo(url) {
+      if (navigator.share) {
+        navigator.share({ title: "Check this video", url }).catch(console.error);
+      } else {
+        const input = document.createElement('input');
+        input.value = url;
+        document.body.appendChild(input);
+        input.select();
+        document.execCommand('copy');
+        document.body.removeChild(input);
+        showNotification("Link copied to clipboard!");
+      }
+    }
+
+    function showNotification(message) {
+      const note = document.createElement('div');
+      note.style.cssText = `
+        position: fixed;
+        top: 20px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: linear-gradient(135deg, #667eea, #764ba2);
+        color: white;
+        padding: 12px 24px;
+        border-radius: 25px;
+        z-index: 9999;
+        font-weight: 500;
+        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+        backdrop-filter: blur(10px);
+      `;
+      note.textContent = message;
+      document.body.appendChild(note);
+      setTimeout(() => {
+        note.style.opacity = '0';
+        note.style.transform += ' translateY(-20px)';
+        note.style.transition = 'all 0.3s ease';
+        setTimeout(() => document.body.removeChild(note), 300);
+      }, 2000);
+    }
+
+    let startY = 0;
+    let startTime = 0;
+    
+    videoContainer.addEventListener('touchstart', e => {
+      startY = e.changedTouches[0].clientY;
+      startTime = Date.now();
+    }, { passive: true });
+    
+    videoContainer.addEventListener('touchend', e => {
+      const endY = e.changedTouches[0].clientY;
+      const endTime = Date.now();
+      const diff = startY - endY;
+      const timeDiff = endTime - startTime;
+      
+      // Swipe detection: minimum distance of 80px and maximum time of 800ms
+      if (Math.abs(diff) > 80 && timeDiff < 800 && !isScrolling) {
+        e.preventDefault();
+        if (diff > 0) {
+          // Swiped up - go to next video
+          scrollToNext();
+        } else {
+          // Swiped down - go to previous video
+          scrollToPrevious();
+        }
+      }
+    }, { passive: false });
+
+    document.addEventListener('keydown', e => {
+      if (['ArrowUp', 'ArrowLeft'].includes(e.key)) {
+        e.preventDefault(); scrollToPrevious();
+      } else if (['ArrowDown', 'ArrowRight'].includes(e.key)) {
+        e.preventDefault(); scrollToNext();
+      }
+    });
+
+    // Enable user interaction to allow autoplay
+    function enableAutoplay() {
+      document.removeEventListener('click', enableAutoplay);
+      document.removeEventListener('touchstart', enableAutoplay);
+      // Trigger initial video play
+      setTimeout(() => {
+        const firstIframe = document.getElementById('video-0');
+        if (firstIframe) {
+          firstIframe.src = videos[0].url;
+        }
+      }, 100);
+    }
+
+    // Listen for user interaction
+    document.addEventListener('click', enableAutoplay, { once: true });
+    document.addEventListener('touchstart', enableAutoplay, { once: true });
+
+    window.onload = () => {
+      initializeVideos();
+      showNotification("Welcome to Video Player! Tap to enable autoplay 🎉");
+    };
+  </script>
+</body>
+</html>
