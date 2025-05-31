@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover"/>
   <title>TikTok Video Player</title>
   <style>
     * {
@@ -17,6 +17,9 @@
       font-family: 'Segoe UI', Roboto, sans-serif;
       background-color: black;
       overflow: hidden;
+      overscroll-behavior: none;
+      -webkit-overflow-scrolling: touch;
+      touch-action: pan-y pinch-zoom;
     }
 
     main {
@@ -26,8 +29,12 @@
       scroll-snap-type: y mandatory;
       -webkit-overflow-scrolling: touch;
       scroll-behavior: smooth;
-      overscroll-behavior: none;
+      overscroll-behavior-y: none;
+      overscroll-behavior-x: none;
       touch-action: pan-y;
+      position: fixed;
+      top: 0;
+      left: 0;
     }
 
     .video-wrapper {
@@ -153,19 +160,22 @@
     const videos = [
       {
         type: "vimeo",
-        url: "https://player.vimeo.com/video/1087925155?h=0bd6899c9d&autoplay=1&muted=1",
-        originalUrl: "https://player.vimeo.com/video/1087925155?h=0bd6899c9d&muted=1"
+        url: "https://player.vimeo.com/video/1087925155?h=0bd6899c9d&autoplay=1",
+        mutedUrl: "https://player.vimeo.com/video/1087925155?h=0bd6899c9d&autoplay=1&muted=1",
+        originalUrl: "https://player.vimeo.com/video/1087925155?h=0bd6899c9d"
       },
       {
         type: "vimeo",
-        url: "https://player.vimeo.com/video/1087925125?h=6612f2ca4c&autoplay=1&muted=1",
-        originalUrl: "https://player.vimeo.com/video/1087925125?h=6612f2ca4c&muted=1"
+        url: "https://player.vimeo.com/video/1087925125?h=6612f2ca4c&autoplay=1",
+        mutedUrl: "https://player.vimeo.com/video/1087925125?h=6612f2ca4c&autoplay=1&muted=1",
+        originalUrl: "https://player.vimeo.com/video/1087925125?h=6612f2ca4c"
       }
     ];
 
     const videoContainer = document.getElementById('videoContainer');
     let currentVideoIndex = 0;
     let isScrolling = false;
+    let soundEnabled = false;
 
     function createVideoWrapper(video, index) {
       const wrapper = document.createElement('div');
@@ -174,8 +184,8 @@
 
       const iframe = document.createElement('iframe');
       iframe.allow = "autoplay; fullscreen; picture-in-picture";
-      // Start with autoplay URL for the first video, original URL for others
-      iframe.src = index === 0 ? video.url : video.originalUrl;
+      // Start with muted version initially, will be unmuted after user interaction
+      iframe.src = index === 0 ? video.mutedUrl : video.originalUrl;
       iframe.id = `video-${index}`;
       iframe.onload = () => iframe.classList.add('loaded');
 
@@ -211,7 +221,12 @@
       shareBtn.textContent = '📤';
       shareBtn.onclick = () => shareVideo(video.url);
 
-      actionBox.append(upBtn, downBtn, likeBtn, commentBtn, shareBtn);
+      const soundBtn = document.createElement('div');
+      soundBtn.className = 'action-btn sound-btn';
+      soundBtn.innerHTML = soundEnabled ? '🔊' : '🔇';
+      soundBtn.onclick = () => toggleSound();
+
+      actionBox.append(upBtn, downBtn, likeBtn, commentBtn, shareBtn, soundBtn);
       wrapper.append(iframe, topLabel, actionBox);
       return wrapper;
     }
@@ -249,13 +264,13 @@
         }
       });
 
-      // Play current video with autoplay
+      // Play current video with proper sound setting
       const currentIframe = document.getElementById(`video-${currentVideoIndex}`);
       if (currentIframe) {
         const video = videos[currentVideoIndex];
-        // Force reload with autoplay
+        // Use sound-enabled URL or muted URL based on sound state
         setTimeout(() => {
-          currentIframe.src = video.url;
+          currentIframe.src = soundEnabled ? video.url : video.mutedUrl;
         }, 100);
       }
     }
@@ -324,20 +339,45 @@
 
     let startY = 0;
     let startTime = 0;
+    let isDragging = false;
     
-    videoContainer.addEventListener('touchstart', e => {
-      startY = e.changedTouches[0].clientY;
+    // Prevent pull-to-refresh
+    document.addEventListener('touchstart', e => {
+      if (e.touches.length !== 1) return;
+      startY = e.touches[0].clientY;
       startTime = Date.now();
-    }, { passive: true });
+      isDragging = false;
+    }, { passive: false });
+    
+    document.addEventListener('touchmove', e => {
+      if (e.touches.length !== 1) return;
+      const currentY = e.touches[0].clientY;
+      const diff = currentY - startY;
+      
+      // Prevent pull-to-refresh when at top and swiping down
+      if (videoContainer.scrollTop === 0 && diff > 0) {
+        e.preventDefault();
+        isDragging = true;
+      }
+      
+      // Prevent overscroll at bottom when swiping up
+      const isAtBottom = videoContainer.scrollTop >= (videoContainer.scrollHeight - videoContainer.clientHeight);
+      if (isAtBottom && diff < 0) {
+        e.preventDefault();
+        isDragging = true;
+      }
+    }, { passive: false });
     
     videoContainer.addEventListener('touchend', e => {
+      if (!isDragging) return;
+      
       const endY = e.changedTouches[0].clientY;
       const endTime = Date.now();
       const diff = startY - endY;
       const timeDiff = endTime - startTime;
       
-      // Swipe detection: minimum distance of 80px and maximum time of 800ms
-      if (Math.abs(diff) > 80 && timeDiff < 800 && !isScrolling) {
+      // Swipe detection: minimum distance of 100px and maximum time of 600ms
+      if (Math.abs(diff) > 100 && timeDiff < 600 && !isScrolling) {
         e.preventDefault();
         if (diff > 0) {
           // Swiped up - go to next video
@@ -347,6 +387,7 @@
           scrollToPrevious();
         }
       }
+      isDragging = false;
     }, { passive: false });
 
     document.addEventListener('keydown', e => {
@@ -357,26 +398,47 @@
       }
     });
 
-    // Enable user interaction to allow autoplay
-    function enableAutoplay() {
-      document.removeEventListener('click', enableAutoplay);
-      document.removeEventListener('touchstart', enableAutoplay);
-      // Trigger initial video play
-      setTimeout(() => {
-        const firstIframe = document.getElementById('video-0');
-        if (firstIframe) {
-          firstIframe.src = videos[0].url;
-        }
-      }, 100);
+    function toggleSound() {
+      soundEnabled = !soundEnabled;
+      
+      // Update all sound button icons
+      document.querySelectorAll('.sound-btn').forEach(btn => {
+        btn.innerHTML = soundEnabled ? '🔊' : '🔇';
+      });
+      
+      // Reload current video with proper sound setting
+      const currentIframe = document.getElementById(`video-${currentVideoIndex}`);
+      if (currentIframe) {
+        const video = videos[currentVideoIndex];
+        currentIframe.src = soundEnabled ? video.url : video.mutedUrl;
+      }
+      
+      showNotification(soundEnabled ? "Sound ON 🔊" : "Sound OFF 🔇");
     }
 
-    // Listen for user interaction
-    document.addEventListener('click', enableAutoplay, { once: true });
-    document.addEventListener('touchstart', enableAutoplay, { once: true });
+    // Enable sound and autoplay after user interaction
+    function enableSoundAndAutoplay() {
+      soundEnabled = true;
+      document.removeEventListener('click', enableSoundAndAutoplay);
+      document.removeEventListener('touchstart', enableSoundAndAutoplay);
+      
+      // Reload current video with sound
+      const currentIframe = document.getElementById(`video-${currentVideoIndex}`);
+      if (currentIframe) {
+        const video = videos[currentVideoIndex];
+        currentIframe.src = video.url;
+      }
+      
+      showNotification("Sound enabled! 🔊");
+    }
+
+    // Listen for user interaction to enable sound
+    document.addEventListener('click', enableSoundAndAutoplay, { once: true });
+    document.addEventListener('touchstart', enableSoundAndAutoplay, { once: true });
 
     window.onload = () => {
       initializeVideos();
-      showNotification("Welcome to Video Player! Tap to enable autoplay 🎉");
+      showNotification("Welcome! Tap anywhere to enable sound 🎵");
     };
   </script>
 </body>
