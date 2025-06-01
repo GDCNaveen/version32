@@ -1,440 +1,582 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover"/>
-  <title>TikTok Video Player</title>
-  <style>
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-    }
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TikTok-Style Video App</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
 
-    html, body {
-      height: 100%;
-      width: 100%;
-      font-family: 'Segoe UI', Roboto, sans-serif;
-      background-color: black;
-      overflow: hidden;
-      overscroll-behavior: none;
-      -webkit-overflow-scrolling: touch;
-      touch-action: pan-y pinch-zoom;
-    }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #000;
+            overflow: hidden;
+            color: white;
+        }
 
-    main {
-      height: 100vh;
-      width: 100vw;
-      overflow-y: scroll;
-      scroll-snap-type: y mandatory;
-      -webkit-overflow-scrolling: touch;
-      scroll-behavior: smooth;
-      overscroll-behavior-y: none;
-      overscroll-behavior-x: none;
-      touch-action: pan-y;
-      position: fixed;
-      top: 0;
-      left: 0;
-    }
+        .app-container {
+            height: 100vh;
+            position: relative;
+            overflow: hidden;
+        }
 
-    .video-wrapper {
-      height: 100vh;
-      width: 100%;
-      scroll-snap-align: start;
-      background-color: black;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      position: relative;
-      touch-action: pan-y;
-    }
+        .video-container {
+            height: 100vh;
+            width: 100vw;
+            position: relative;
+            scroll-snap-type: y mandatory;
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+        }
 
-    iframe {
-      width: 100%;
-      height: 100%;
-      border: none;
-      opacity: 0;
-      transition: opacity 1s ease;
-    }
+        .video-item {
+            height: 100vh;
+            width: 100%;
+            position: relative;
+            scroll-snap-align: start;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #000;
+        }
 
-    iframe.loaded {
-      opacity: 1;
-    }
+        .video-wrapper {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
 
-    .video-top-label {
-      position: absolute;
-      top: 20px;
-      left: 10px;
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      color: white;
-      padding: 2px 8px;
-      border-radius: 15px;
-      font-weight: 600;
-      font-size: 14px;
-      z-index: 5;
-      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
-      backdrop-filter: blur(10px);
-      border: 1px solid rgba(255, 255, 255, 0.1);
-    }
+        iframe {
+            width: 100% !important;
+            height: 100% !important;
+            border: none;
+            object-fit: cover;
+        }
 
-    .action-buttons {
-      position: absolute;
-      right: 20px;
-      bottom: 80px;
-      display: flex;
-      flex-direction: column;
-      gap: 15px;
-      z-index: 10;
-    }
+        .overlay {
+            position: absolute;
+            bottom: 80px;
+            left: 20px;
+            right: 80px;
+            z-index: 10;
+            pointer-events: none;
+        }
 
-    .action-btn {
-      width: 50px;
-      height: 50px;
-      background: linear-gradient(135deg, #ff9a9e 0%, #fecfef 100%);
-      color: white;
-      font-size: 20px;
-      border-radius: 50%;
-      box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      backdrop-filter: blur(10px);
-      border: 2px solid rgba(255, 255, 255, 0.2);
-      cursor: pointer;
-      position: relative;
-      overflow: hidden;
-      transition: all 0.3s;
-    }
+        .video-info {
+            color: white;
+            text-shadow: 0 1px 3px rgba(0,0,0,0.8);
+        }
 
-    .action-btn::before {
-      content: '';
-      position: absolute;
-      top: 0;
-      left: -100%;
-      width: 100%;
-      height: 100%;
-      background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
-      transition: left 0.5s;
-    }
+        .username {
+            font-size: 16px;
+            font-weight: bold;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+        }
 
-    .action-btn:hover::before {
-      left: 100%;
-    }
+        .verified {
+            width: 16px;
+            height: 16px;
+            margin-left: 6px;
+            background: #20D5EC;
+            border-radius: 50%;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 10px;
+        }
 
-    .action-btn:hover {
-      transform: scale(1.15) rotate(10deg);
-      box-shadow: 0 12px 30px rgba(0, 0, 0, 0.4);
-    }
+        .description {
+            font-size: 14px;
+            line-height: 1.4;
+            margin-bottom: 12px;
+            max-width: 280px;
+        }
 
-    .action-btn:active {
-      transform: scale(0.9);
-    }
+        .hashtags {
+            font-size: 14px;
+            color: #20D5EC;
+        }
 
-    .nav-btn-up {
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
-    }
+        .action-buttons {
+            position: absolute;
+            right: 15px;
+            bottom: 120px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            z-index: 10;
+        }
 
-    .nav-btn-down {
-      background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%) !important;
-    }
+        .action-btn {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.2);
+            backdrop-filter: blur(10px);
+            border: none;
+            color: white;
+            font-size: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+        }
 
-    @media (max-width: 768px) {
-      .action-buttons {
-        right: 15px;
-        bottom: 100px;
-        gap: 12px;
-      }
+        .action-btn:hover {
+            background: rgba(255,255,255,0.3);
+            transform: scale(1.1);
+        }
 
-      .action-btn {
-        width: 45px;
-        height: 45px;
-        font-size: 18px;
-      }
-    }
-  </style>
+        .action-btn.liked {
+            color: #ff2d55;
+            background: rgba(255,45,85,0.2);
+        }
+
+        .action-count {
+            position: absolute;
+            top: 55px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 12px;
+            font-weight: bold;
+            text-shadow: 0 1px 2px rgba(0,0,0,0.8);
+            white-space: nowrap;
+        }
+
+        .bottom-nav {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 60px;
+            background: rgba(0,0,0,0.8);
+            backdrop-filter: blur(20px);
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            z-index: 20;
+            border-top: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .nav-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            color: rgba(255,255,255,0.6);
+            font-size: 10px;
+            text-decoration: none;
+            transition: color 0.3s ease;
+        }
+
+        .nav-item.active {
+            color: white;
+        }
+
+        .nav-icon {
+            font-size: 24px;
+            margin-bottom: 2px;
+        }
+
+        .add-btn {
+            width: 40px;
+            height: 24px;
+            background: linear-gradient(45deg, #ff2d55, #ff6b35);
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            color: white;
+        }
+
+        .music-note {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            display: flex;
+            align-items: center;
+            color: white;
+            font-size: 12px;
+            z-index: 10;
+        }
+
+        .music-icon {
+            width: 16px;
+            height: 16px;
+            margin-right: 8px;
+            animation: spin 3s linear infinite;
+        }
+
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        .profile-pic {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: linear-gradient(45deg, #ff2d55, #20D5EC);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            font-weight: bold;
+            margin-right: 8px;
+        }
+
+        /* Mobile optimizations */
+        @media (max-width: 480px) {
+            .overlay {
+                bottom: 70px;
+                left: 15px;
+                right: 70px;
+            }
+            
+            .action-buttons {
+                right: 10px;
+                bottom: 110px;
+                gap: 15px;
+            }
+            
+            .action-btn {
+                width: 44px;
+                height: 44px;
+                font-size: 18px;
+            }
+            
+            .description {
+                max-width: 250px;
+                font-size: 13px;
+            }
+        }
+
+        /* Smooth scrolling */
+        .video-container {
+            scroll-behavior: smooth;
+        }
+
+        /* Loading animation */
+        .loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: white;
+            font-size: 18px;
+        }
+
+        .spinner {
+            width: 30px;
+            height: 30px;
+            border: 3px solid rgba(255,255,255,0.3);
+            border-top: 3px solid white;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 10px;
+        }
+    </style>
 </head>
 <body>
-  <main id="videoContainer"></main>
+    <div class="app-container">
+        <div class="video-container" id="videoContainer">
+            <!-- Video 1 -->
+            <div class="video-item">
+                <div class="video-wrapper">
+                    <iframe src="https://player.vimeo.com/video/1087925155?h=0bd6899c9d&title=0&byline=0&portrait=0&badge=0&autopause=0&player_id=0&app_id=58479&autoplay=1&loop=1&muted=1" 
+                            allow="autoplay; fullscreen; picture-in-picture; clipboard-write; encrypted-media"></iframe>
+                </div>
+                <div class="overlay">
+                    <div class="video-info">
+                        <div class="username">
+                            <div class="profile-pic">A</div>
+                            @amazing_creator
+                            <span class="verified">✓</span>
+                        </div>
+                        <div class="description">
+                            Check out this incredible moment! The energy is absolutely unmatched 🔥
+                        </div>
+                        <div class="hashtags">
+                            #viral #amazing #trending #fyp
+                        </div>
+                    </div>
+                </div>
+                <div class="action-buttons">
+                    <button class="action-btn" onclick="toggleLike(this)">
+                        ❤️
+                        <div class="action-count">1.2M</div>
+                    </button>
+                    <button class="action-btn" onclick="showComments()">
+                        💬
+                        <div class="action-count">8.5K</div>
+                    </button>
+                    <button class="action-btn" onclick="shareVideo()">
+                        ↗️
+                        <div class="action-count">Share</div>
+                    </button>
+                    <button class="action-btn" onclick="showMore()">
+                        ⋯
+                    </button>
+                </div>
+                <div class="music-note">
+                    <div class="music-icon">🎵</div>
+                    Original Audio - Amazing Creator
+                </div>
+            </div>
 
-  <script>
-    const videos = [
-      {
-        type: "vimeo",
-        url: "https://player.vimeo.com/video/1087925155?h=0bd6899c9d&autoplay=1",
-        mutedUrl: "https://player.vimeo.com/video/1087925155?h=0bd6899c9d&autoplay=1&muted=1",
-        originalUrl: "https://player.vimeo.com/video/1087925155?h=0bd6899c9d"
-      }
-      
-    ];
+            <!-- Video 2 -->
+            <div class="video-item">
+                <div class="video-wrapper">
+                    <iframe src="https://player.vimeo.com/video/1087925125?h=6612f2ca4c&title=0&byline=0&portrait=0&badge=0&autopause=0&player_id=0&app_id=58479&autoplay=1&loop=1&muted=1" 
+                            allow="autoplay; fullscreen; picture-in-picture; clipboard-write; encrypted-media"></iframe>
+                </div>
+                <div class="overlay">
+                    <div class="video-info">
+                        <div class="username">
+                            <div class="profile-pic">B</div>
+                            @creative_vibes
+                            <span class="verified">✓</span>
+                        </div>
+                        <div class="description">
+                            When the beat drops and everything falls into place perfectly ✨
+                        </div>
+                        <div class="hashtags">
+                            #perfect #timing #music #dance
+                        </div>
+                    </div>
+                </div>
+                <div class="action-buttons">
+                    <button class="action-btn" onclick="toggleLike(this)">
+                        ❤️
+                        <div class="action-count">892K</div>
+                    </button>
+                    <button class="action-btn" onclick="showComments()">
+                        💬
+                        <div class="action-count">12.1K</div>
+                    </button>
+                    <button class="action-btn" onclick="shareVideo()">
+                        ↗️
+                        <div class="action-count">Share</div>
+                    </button>
+                    <button class="action-btn" onclick="showMore()">
+                        ⋯
+                    </button>
+                </div>
+                <div class="music-note">
+                    <div class="music-icon">🎵</div>
+                    Trending Sound - Beat Drop Mix
+                </div>
+            </div>
 
-    const videoContainer = document.getElementById('videoContainer');
-    let currentVideoIndex = 0;
-    let isScrolling = false;
-    let soundEnabled = false;
+            <!-- Video 3 (duplicate of video 2) -->
+            <div class="video-item">
+                <div class="video-wrapper">
+                    <iframe src="https://player.vimeo.com/video/1087925125?h=6612f2ca4c&title=0&byline=0&portrait=0&badge=0&autopause=0&player_id=0&app_id=58479&autoplay=1&loop=1&muted=1" 
+                            allow="autoplay; fullscreen; picture-in-picture; clipboard-write; encrypted-media"></iframe>
+                </div>
+                <div class="overlay">
+                    <div class="video-info">
+                        <div class="username">
+                            <div class="profile-pic">C</div>
+                            @viral_moments
+                            <span class="verified">✓</span>
+                        </div>
+                        <div class="description">
+                            This moment changed everything! Can't believe this actually happened 🤯
+                        </div>
+                        <div class="hashtags">
+                            #unbelievable #moment #wow #viral
+                        </div>
+                    </div>
+                </div>
+                <div class="action-buttons">
+                    <button class="action-btn" onclick="toggleLike(this)">
+                        ❤️
+                        <div class="action-count">2.1M</div>
+                    </button>
+                    <button class="action-btn" onclick="showComments()">
+                        💬
+                        <div class="action-count">15.7K</div>
+                    </button>
+                    <button class="action-btn" onclick="shareVideo()">
+                        ↗️
+                        <div class="action-count">Share</div>
+                    </button>
+                    <button class="action-btn" onclick="showMore()">
+                        ⋯
+                    </button>
+                </div>
+                <div class="music-note">
+                    <div class="music-icon">🎵</div>
+                    Epic Moment Sound - Viral Mix
+                </div>
+            </div>
+        </div>
 
-    function createVideoWrapper(video, index) {
-      const wrapper = document.createElement('div');
-      wrapper.className = 'video-wrapper';
-      wrapper.dataset.index = index;
+        <!-- Bottom Navigation -->
+        <div class="bottom-nav">
+            <a href="#" class="nav-item active">
+                <div class="nav-icon">🏠</div>
+                <span>Home</span>
+            </a>
+            <a href="#" class="nav-item">
+                <div class="nav-icon">🔍</div>
+                <span>Discover</span>
+            </a>
+            <a href="#" class="nav-item">
+                <div class="add-btn">+</div>
+            </a>
+            <a href="#" class="nav-item">
+                <div class="nav-icon">💬</div>
+                <span>Inbox</span>
+            </a>
+            <a href="#" class="nav-item">
+                <div class="nav-icon">👤</div>
+                <span>Profile</span>
+            </a>
+        </div>
+    </div>
 
-      const iframe = document.createElement('iframe');
-      iframe.allow = "autoplay; fullscreen; picture-in-picture";
-      // Start with muted version initially, will be unmuted after user interaction
-      iframe.src = index === 0 ? video.mutedUrl : video.originalUrl;
-      iframe.id = `video-${index}`;
-      iframe.onload = () => iframe.classList.add('loaded');
-
-      const topLabel = document.createElement('div');
-      topLabel.className = 'video-top-label';
-      topLabel.textContent = '@Morthad';
-
-      const actionBox = document.createElement('div');
-      actionBox.className = 'action-buttons';
-
-      const upBtn = document.createElement('div');
-      upBtn.className = 'action-btn nav-btn-up';
-      upBtn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path d="M8 12L12 8L16 12"/></svg>`;
-      upBtn.onclick = () => scrollToPrevious();
-
-      const downBtn = document.createElement('div');
-      downBtn.className = 'action-btn nav-btn-down';
-      downBtn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path d="M8 12L12 16L16 12"/></svg>`;
-      downBtn.onclick = () => scrollToNext();
-
-      const likeBtn = document.createElement('div');
-      likeBtn.className = 'action-btn';
-      likeBtn.textContent = '❤️';
-      likeBtn.onclick = () => showNotification("Video liked! ❤️");
-
-      const commentBtn = document.createElement('div');
-      commentBtn.className = 'action-btn';
-      commentBtn.textContent = '💬';
-      commentBtn.onclick = () => showNotification("Comment feature coming soon! 💬");
-
-      const shareBtn = document.createElement('div');
-      shareBtn.className = 'action-btn';
-      shareBtn.textContent = '📤';
-      shareBtn.onclick = () => shareVideo(video.url);
-
-      const soundBtn = document.createElement('div');
-      soundBtn.className = 'action-btn sound-btn';
-      soundBtn.innerHTML = soundEnabled ? '🔊' : '🔇';
-      soundBtn.onclick = () => toggleSound();
-
-      actionBox.append(upBtn, downBtn, likeBtn, commentBtn, shareBtn, soundBtn);
-      wrapper.append(iframe, topLabel, actionBox);
-      return wrapper;
-    }
-
-    function scrollToVideo(index) {
-      if (index < 0 || index >= videos.length || isScrolling) return;
-      isScrolling = true;
-      const target = document.querySelector(`.video-wrapper[data-index="${index}"]`);
-      if (target) {
-        target.scrollIntoView({ behavior: 'smooth' });
-        setTimeout(() => {
-          currentVideoIndex = index;
-          playCurrentVideo();
-          isScrolling = false;
-        }, 600);
-      } else {
-        isScrolling = false;
-      }
-    }
-
-    function scrollToPrevious() {
-      scrollToVideo(currentVideoIndex - 1);
-    }
-
-    function scrollToNext() {
-      scrollToVideo(currentVideoIndex + 1);
-    }
-
-    function playCurrentVideo() {
-      // Pause all videos except current
-      document.querySelectorAll('iframe').forEach((iframe, index) => {
-        if (index !== currentVideoIndex) {
-          const video = videos[index];
-          iframe.src = video.originalUrl;
-        }
-      });
-
-      // Play current video with proper sound setting
-      const currentIframe = document.getElementById(`video-${currentVideoIndex}`);
-      if (currentIframe) {
-        const video = videos[currentVideoIndex];
-        // Use sound-enabled URL or muted URL based on sound state
-        setTimeout(() => {
-          currentIframe.src = soundEnabled ? video.url : video.mutedUrl;
-        }, 100);
-      }
-    }
-
-    function initializeVideos() {
-      videoContainer.innerHTML = '';
-      videos.forEach((video, index) => {
-        const wrapper = createVideoWrapper(video, index);
-        videoContainer.appendChild(wrapper);
-      });
-
-      const observer = new IntersectionObserver(entries => {
-        entries.forEach(entry => {
-          if (entry.isIntersecting && entry.intersectionRatio > 0.7) {
-            const index = parseInt(entry.target.dataset.index);
-            if (index !== currentVideoIndex && !isScrolling) {
-              currentVideoIndex = index;
-              setTimeout(() => playCurrentVideo(), 100);
+    <script>
+        function toggleLike(button) {
+            button.classList.toggle('liked');
+            const count = button.querySelector('.action-count');
+            const currentCount = parseFloat(count.textContent);
+            
+            if (button.classList.contains('liked')) {
+                count.textContent = (currentCount + 0.1).toFixed(1) + 'M';
+                button.style.transform = 'scale(1.2)';
+                setTimeout(() => {
+                    button.style.transform = 'scale(1)';
+                }, 200);
+            } else {
+                count.textContent = currentCount.toFixed(1) + 'M';
             }
-          }
-        });
-      }, { threshold: 0.7 });
-
-      document.querySelectorAll('.video-wrapper').forEach(wrapper => observer.observe(wrapper));
-    }
-
-    function shareVideo(url) {
-      if (navigator.share) {
-        navigator.share({ title: "Check this video", url }).catch(console.error);
-      } else {
-        const input = document.createElement('input');
-        input.value = url;
-        document.body.appendChild(input);
-        input.select();
-        document.execCommand('copy');
-        document.body.removeChild(input);
-        showNotification("Link copied to clipboard!");
-      }
-    }
-
-    function showNotification(message) {
-      const note = document.createElement('div');
-      note.style.cssText = `
-        position: fixed;
-        top: 20px;
-        left: 50%;
-        transform: translateX(-50%);
-        background: linear-gradient(135deg, #667eea, #764ba2);
-        color: white;
-        padding: 12px 24px;
-        border-radius: 25px;
-        z-index: 9999;
-        font-weight: 500;
-        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
-        backdrop-filter: blur(10px);
-      `;
-      note.textContent = message;
-      document.body.appendChild(note);
-      setTimeout(() => {
-        note.style.opacity = '0';
-        note.style.transform += ' translateY(-20px)';
-        note.style.transition = 'all 0.3s ease';
-        setTimeout(() => document.body.removeChild(note), 300);
-      }, 2000);
-    }
-
-    let startY = 0;
-    let startTime = 0;
-    let isDragging = false;
-    
-    // Prevent pull-to-refresh
-    document.addEventListener('touchstart', e => {
-      if (e.touches.length !== 1) return;
-      startY = e.touches[0].clientY;
-      startTime = Date.now();
-      isDragging = false;
-    }, { passive: false });
-    
-    document.addEventListener('touchmove', e => {
-      if (e.touches.length !== 1) return;
-      const currentY = e.touches[0].clientY;
-      const diff = currentY - startY;
-      
-      // Prevent pull-to-refresh when at top and swiping down
-      if (videoContainer.scrollTop === 0 && diff > 0) {
-        e.preventDefault();
-        isDragging = true;
-      }
-      
-      // Prevent overscroll at bottom when swiping up
-      const isAtBottom = videoContainer.scrollTop >= (videoContainer.scrollHeight - videoContainer.clientHeight);
-      if (isAtBottom && diff < 0) {
-        e.preventDefault();
-        isDragging = true;
-      }
-    }, { passive: false });
-    
-    videoContainer.addEventListener('touchend', e => {
-      if (!isDragging) return;
-      
-      const endY = e.changedTouches[0].clientY;
-      const endTime = Date.now();
-      const diff = startY - endY;
-      const timeDiff = endTime - startTime;
-      
-      // Swipe detection: minimum distance of 100px and maximum time of 600ms
-      if (Math.abs(diff) > 100 && timeDiff < 600 && !isScrolling) {
-        e.preventDefault();
-        if (diff > 0) {
-          // Swiped up - go to next video
-          scrollToNext();
-        } else {
-          // Swiped down - go to previous video
-          scrollToPrevious();
         }
-      }
-      isDragging = false;
-    }, { passive: false });
 
-    document.addEventListener('keydown', e => {
-      if (['ArrowUp', 'ArrowLeft'].includes(e.key)) {
-        e.preventDefault(); scrollToPrevious();
-      } else if (['ArrowDown', 'ArrowRight'].includes(e.key)) {
-        e.preventDefault(); scrollToNext();
-      }
-    });
+        function showComments() {
+            alert('Comments feature coming soon! 💬');
+        }
 
-    function toggleSound() {
-      soundEnabled = !soundEnabled;
-      
-      // Update all sound button icons
-      document.querySelectorAll('.sound-btn').forEach(btn => {
-        btn.innerHTML = soundEnabled ? '🔊' : '🔇';
-      });
-      
-      // Reload current video with proper sound setting
-      const currentIframe = document.getElementById(`video-${currentVideoIndex}`);
-      if (currentIframe) {
-        const video = videos[currentVideoIndex];
-        currentIframe.src = soundEnabled ? video.url : video.mutedUrl;
-      }
-      
-      showNotification(soundEnabled ? "Sound ON 🔊" : "Sound OFF 🔇");
-    }
+        function shareVideo() {
+            if (navigator.share) {
+                navigator.share({
+                    title: 'Check out this amazing video!',
+                    text: 'You have to see this!',
+                    url: window.location.href
+                });
+            } else {
+                alert('Share feature activated! 📤');
+            }
+        }
 
-    // Enable sound and autoplay after user interaction
-    function enableSoundAndAutoplay() {
-      soundEnabled = true;
-      document.removeEventListener('click', enableSoundAndAutoplay);
-      document.removeEventListener('touchstart', enableSoundAndAutoplay);
-      
-      // Reload current video with sound
-      const currentIframe = document.getElementById(`video-${currentVideoIndex}`);
-      if (currentIframe) {
-        const video = videos[currentVideoIndex];
-        currentIframe.src = video.url;
-      }
-      
-      showNotification("Sound enabled! 🔊");
-    }
+        function showMore() {
+            const options = ['Report', 'Not Interested', 'Copy Link', 'Save Video'];
+            const choice = options[Math.floor(Math.random() * options.length)];
+            alert(`${choice} selected`);
+        }
 
-    // Listen for user interaction to enable sound
-    document.addEventListener('click', enableSoundAndAutoplay, { once: true });
-    document.addEventListener('touchstart', enableSoundAndAutoplay, { once: true });
+        // Navigation functionality
+        document.querySelectorAll('.nav-item').forEach(item => {
+            item.addEventListener('click', (e) => {
+                e.preventDefault();
+                document.querySelectorAll('.nav-item').forEach(nav => nav.classList.remove('active'));
+                item.classList.add('active');
+            });
+        });
 
-    window.onload = () => {
-      initializeVideos();
-      showNotification("Welcome! Tap anywhere to enable sound 🎵");
-    };
-  </script>
+        // Touch swipe detection for better mobile experience
+        let startY = 0;
+        let endY = 0;
+
+        document.addEventListener('touchstart', (e) => {
+            startY = e.touches[0].clientY;
+        });
+
+        document.addEventListener('touchend', (e) => {
+            endY = e.changedTouches[0].clientY;
+            handleSwipe();
+        });
+
+        function handleSwipe() {
+            const threshold = 50;
+            const container = document.getElementById('videoContainer');
+            
+            if (startY - endY > threshold) {
+                // Swipe up - scroll to next video
+                const currentScroll = container.scrollTop;
+                const videoHeight = window.innerHeight;
+                const nextScroll = Math.ceil(currentScroll / videoHeight) * videoHeight;
+                container.scrollTo({
+                    top: nextScroll,
+                    behavior: 'smooth'
+                });
+            } else if (endY - startY > threshold) {
+                // Swipe down - scroll to previous video
+                const currentScroll = container.scrollTop;
+                const videoHeight = window.innerHeight;
+                const prevScroll = Math.floor(currentScroll / videoHeight) * videoHeight;
+                container.scrollTo({
+                    top: prevScroll,
+                    behavior: 'smooth'
+                });
+            }
+        }
+
+        // Keyboard navigation
+        document.addEventListener('keydown', (e) => {
+            const container = document.getElementById('videoContainer');
+            const videoHeight = window.innerHeight;
+            
+            if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                const currentScroll = container.scrollTop;
+                const prevScroll = Math.max(0, currentScroll - videoHeight);
+                container.scrollTo({
+                    top: prevScroll,
+                    behavior: 'smooth'
+                });
+            } else if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                const currentScroll = container.scrollTop;
+                const nextScroll = currentScroll + videoHeight;
+                container.scrollTo({
+                    top: nextScroll,
+                    behavior: 'smooth'
+                });
+            }
+        });
+
+        // Disable context menu on videos
+        document.addEventListener('contextmenu', (e) => {
+            if (e.target.tagName === 'IFRAME') {
+                e.preventDefault();
+            }
+        });
+
+        // Add loading states
+        document.querySelectorAll('iframe').forEach(iframe => {
+            const wrapper = iframe.parentElement;
+            const loading = document.createElement('div');
+            loading.className = 'loading';
+            loading.innerHTML = '<div class="spinner"></div>Loading...';
+            wrapper.appendChild(loading);
+            
+            iframe.addEventListener('load', () => {
+                loading.remove();
+            });
+        });
+    </script>
 </body>
 </html>
